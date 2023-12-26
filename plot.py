@@ -1,10 +1,10 @@
-from typing import Iterable
+from typing import Iterable, List, Union
 from analysis import is_outlier
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pathlib
 import polars as pl
-
+from sklearn.decomposition import PCA
 
 
 def plot_feature_histograms(data: pl.DataFrame, plot_dir:str='.', columns: Iterable[str]=None, hue_variables: Iterable[str]=None, plot_no_outliers: bool = False):
@@ -60,7 +60,74 @@ def plot_pairplot(data, name: str, plot_dir:str='.', sub: str = ''):
     ax = plt.gca()
     title_str = f'pairplot_{name}{sub}'
     ax.set_title(title_str)
-    hist_path = f'{plot_dir}/{title_str}.jpg'
-    pathlib.Path(hist_path).parent.mkdir(parents=True,exist_ok=True)
-    plt.savefig(hist_path)
+    fpath = f'{plot_dir}/{title_str}.jpg'
+    pathlib.Path(fpath).parent.mkdir(parents=True,exist_ok=True)
+    plt.savefig(fpath)
     plt.close()
+
+
+def plot_pca(pca: PCA, columns: Iterable[str], name: str, plot_dir: str='.', sub: str = ''):
+    if sub != '':
+        sub = f'_{sub.strip(' _')}'
+    title_str = f'pca_{name}{sub}'
+    fpath = f'{plot_dir}/{title_str}'
+    pathlib.Path(fpath).parent.mkdir(parents=True,exist_ok=True)
+
+    comps = pca_component_matrix(pca, columns)
+    comps.write_csv(f'{fpath}.csv')
+
+    f, ax = plt.subplots(figsize=(11, 9))
+    cmap = sns.diverging_palette(230, 20, as_cmap=True)
+    comps_to_plot = comps.drop(columns=['explained_variance', 'comp'])
+    sns.heatmap(comps_to_plot,
+                xticklabels = comps_to_plot.columns,
+                cmap=cmap,
+                vmin=-1,
+                vmax=1,
+                center=0,
+                square=True,
+                annot=True,
+                linewidths=.5,
+                cbar_kws={"shrink": .5})
+    ax.set_title(title_str.replace(' ', '_'))
+
+    plt.savefig(f'{fpath}.jpg', transparent=False)
+    plt.close('all')
+
+    autoreport_lines = pca_autoreport(pca, columns)
+
+    with open(f'{fpath}_autoreport.txt', 'w') as f:
+        f.write('\n'.join(autoreport_lines))
+
+
+def pca_component_matrix(pca: PCA, columns: Iterable[str]) -> pl.DataFrame:
+    comps = pca.components_
+    comps = pl.DataFrame(comps,
+                         schema=columns)
+    comps = comps.select(pl.col(col).round(2) for col in comps.columns)
+    comps = comps.insert_column(0, pl.Series('comp',[f'Comp_{i+1}' for i in range(comps.shape[0])]))
+    return comps.insert_column(0, pl.Series('explained_variance',
+                 (100 * pca.explained_variance_ratio_).round(0)))
+
+
+def pca_autoreport(pca: PCA, columns: Iterable[str], top_comps:int = 5, top_factors = 5) -> List[str]:
+    autoreport_lines = []
+    autoreport_lines.append('Top components are:\n')
+    
+    comps = pca_component_matrix(pca, columns).to_pandas().iloc[:,2:]
+    comps_top = comps.iloc[:top_comps]
+    top_comps_and_factors = [
+        comp.loc[comp.abs().sort_values(
+            ascending=False).iloc[:top_factors].index]
+        for r, comp in comps_top.iterrows()
+    ]
+    lines_top_comps = [
+        '; '.join(f'{k}: {v}' for k, v in cf.to_dict().items())
+        for cf in top_comps_and_factors
+    ]
+    autoreport_lines += [
+        f'{c} --> {nl}'
+        for c, nl in zip(comps.index[:top_comps], lines_top_comps)
+    ]
+    return autoreport_lines
+

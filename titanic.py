@@ -71,6 +71,17 @@ plot_pairplot(df_no_nulls, name='general', plot_dir=results_dir+'/corrs', sub='s
 
 #%%
 # PCA
+import sklearn
+from plot import plot_pca
+
+pca_n_components = 5
+pca = sklearn.decomposition.PCA(n_components=min(pca_n_components, df_no_nulls.shape[1]))
+pca.fit(df_no_nulls.select(features_numeric))
+pca_no_category = sklearn.decomposition.PCA(n_components=min(pca_n_components,len(features_numeric_no_categorical)))
+pca_no_category.fit(df_no_nulls.select(features_numeric_no_categorical))
+plot_pca(pca, columns=features_numeric, name='general', plot_dir=results_dir+'/corrs')
+plot_pca(pca_no_category, columns=features_numeric_no_categorical, name='general', plot_dir=results_dir+'/corrs', sub='no_categoricals')
+#%%
 #%%
 # LDA
 #%%
