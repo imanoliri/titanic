@@ -18,7 +18,7 @@ survived_data_filepath = f'{data_dir}/{survived_data_file}'
 import polars as pl
 df = pl.read_csv(test_data_filepath)
 df_survived = pl.read_csv(survived_data_filepath)
-df = df.join(df_survived,on='PassengerId')
+df = df.join(df_survived, on='PassengerId')
 df
 #%%
 # Cast to correct class
@@ -59,15 +59,16 @@ for col in features_with_missing:
 #%%
 # Histograms
 from plot import plot_feature_histograms
-
-plot_feature_histograms(df, results_dir+'/hists')
+features_categorical = ['Pclass',  'SibSp', 'Parch', 'Embarked', 'Survived']
+plot_feature_histograms(df, results_dir+'/hists', hue_variables=features_categorical)
 
 #%%
 # Correlations
 from plot import plot_pairplot
 
 df_no_nulls = df.drop_nulls()
-plot_pairplot(df_no_nulls, name='general', dir=results_dir+'/corrs', sub='strict')
+plot_pairplot(df_no_nulls, name='general', plot_dir=results_dir+'/corrs', sub='strict')
+
 #%%
 # PCA
 #%%
