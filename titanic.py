@@ -1,7 +1,7 @@
 #%% [Markdown]
 # # Titanic
 # We will study the titanic Kaggle dataset found in: https://www.kaggle.com/competitions/titanic
-# This will have 3 parts: the EDA (Exploratory Data Analysis), CDA (Confirmatory Data Analysis) & Machine Learning / Deep Learning Model training
+# This will have 4 parts: basic descriptive analysis, EDA (Exploratory Data Analysis), CDA (Confirmatory Data Analysis) & Machine Learning / Deep Learning / Model training
 #%%
 data_dir = 'data'
 results_dir = 'results'
@@ -21,8 +21,15 @@ df_survived = pl.read_csv(survived_data_filepath)
 df = df.join(df_survived, on='PassengerId')
 df
 #%%
+# Rename features
+features_to_rename = {'Pclass': 'Class', 'SibSp': 'Nr_siblings', 'Parch': 'Nr_parents', 'Embarked': 'Port_Embarked'}
+df = df.rename(features_to_rename)
+#%%
 # Cast to correct class
-# features_categorical = ['Pclass',  'SibSp', 'Parch', 'Embarked', 'Survived']
+features_idx = ['PassengerId']
+features_categorical = ['Class', 'Port_Embarked', 'Survived']
+features_numeric = [col for col,dtype in zip(df.columns, df.dtypes) if dtype in pl.NUMERIC_DTYPES and col not in features_idx]
+features_numeric_no_categorical = [col for col in features_numeric if col not in features_categorical]
 #features_to_cast = {pl.Categorical: ['Sex', 'Embarked'], pl.Boolean: ['Parch', 'Survived']}
 features_to_cast = {}
 for cast_type, cast_features in features_to_cast.items():
