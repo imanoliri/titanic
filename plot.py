@@ -5,20 +5,6 @@ import matplotlib.pyplot as plt
 import pathlib
 import polars as pl
 
-def plot_hist(data: pl.DataFrame, col:str, hue_col:str=None, plot_dir:str='.', sub: str = ''):
-    if sub != '':
-        sub = f'_{sub.strip(' _')}'
-    if hue_col is not None:
-        hue_str = hue_col
-        if not isinstance(hue_col, str) and isinstance(hue_col, Iterable):
-            hue_str = '_'.join(c for c in hue_col)
-        sub = f'{sub}_by_{hue_str}'
-    ax = sns.histplot(data, x=col, hue=hue_col)
-    ax.set_title(col)
-    hist_path = f'{plot_dir}/hist_{col}{sub}.jpg'
-    pathlib.Path(hist_path).parent.mkdir(parents=True,exist_ok=True)
-    plt.savefig(hist_path)
-    plt.close()
 
 
 def plot_feature_histograms(data: pl.DataFrame, plot_dir:str='.', columns: Iterable[str]=None, hue_variables: Iterable[str]=None, plot_no_outliers: bool = False):
@@ -49,6 +35,21 @@ def plot_feature_histograms(data: pl.DataFrame, plot_dir:str='.', columns: Itera
                 if col != hue_col:
                     plot_hist(data, col=col, hue_col=hue_col, plot_dir=plot_dir)
 
+
+def plot_hist(data: pl.DataFrame, col:str, hue_col:str=None, plot_dir:str='.', sub: str = ''):
+    if sub != '':
+        sub = f'_{sub.strip(' _')}'
+    if hue_col is not None:
+        hue_str = hue_col
+        if not isinstance(hue_col, str) and isinstance(hue_col, Iterable):
+            hue_str = '_'.join(c for c in hue_col)
+        sub = f'{sub}_by_{hue_str}'
+    ax = sns.histplot(data, x=col, hue=hue_col, multiple='stack')
+    ax.set_title(col)
+    fpath = f'{plot_dir}/hist_{col}{sub}.jpg'
+    pathlib.Path(fpath).parent.mkdir(parents=True,exist_ok=True)
+    plt.savefig(fpath)
+    plt.close()
 
 
 def plot_pairplot(data, name: str, plot_dir:str='.', sub: str = ''):
