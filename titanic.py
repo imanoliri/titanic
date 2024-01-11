@@ -22,15 +22,18 @@ df = df.join(df_survived, on='PassengerId')
 df
 #%%
 # Rename features
-features_to_rename = {'Pclass': 'Class', 'SibSp': 'Nr_siblings', 'Parch': 'Nr_parents', 'Embarked': 'Port_Embarked'}
+features_to_rename = {'Pclass': 'Class', 'SibSp': 'Nr_siblings_or_spouses', 'Parch': 'Nr_parents_or_children', 'Embarked': 'Port_Embarked'}
 df = df.rename(features_to_rename)
 #%%
 # Identify features
 id_col = 'PassengerId'
 cabin_col = 'Cabin'
 price_col = 'Fare'
+nr_relatives_col = 'Nr_total_relatives'
+nr_sibl_spou_col = 'Nr_siblings_or_spouses'
+nr_parent_child_col = 'Nr_parents_or_children'
 idx_features = [id_col, 'Name', 'Ticket', cabin_col]
-social_features = [ 'Class', 'Sex', 'Age', 'Nr_siblings', 'Nr_parents']
+social_features = [ 'Class', 'Sex', 'Age', nr_sibl_spou_col, nr_parent_child_col, nr_relatives_col]
 travel_features = [price_col, 'Port_Embarked']
 result_features = ['Survived']
 
@@ -39,6 +42,9 @@ features_numeric = [col for col,dtype in zip(df.columns, df.dtypes) if dtype in 
 features_numeric_no_categorical = [col for col in features_numeric if col not in features_categorical]
 #%%
 # Feature engineering
+#%%
+# Add total number of relatives
+df = df.with_columns((pl.col(nr_sibl_spou_col) + pl.col(nr_parent_child_col)).alias(nr_relatives_col))
 #%%
 # Divide cabin str into features
 import re
