@@ -38,7 +38,10 @@ travel_features = [price_col, 'Port_Embarked']
 result_features = ['Survived']
 
 features_categorical = ['Class', 'Port_Embarked', 'Survived']+['Sex']
-features_numeric = [col for col,dtype in zip(df.columns, df.dtypes) if dtype in pl.NUMERIC_DTYPES and col not in idx_features]
+def numeric_columns (df: pl.DataFrame) -> list:
+    return [col for col,dtype in zip(df.columns, df.dtypes) if dtype in pl.NUMERIC_DTYPES and col not in idx_features]
+
+features_numeric = numeric_columns(df)
 features_numeric_no_categorical = [col for col in features_numeric if col not in features_categorical]
 #%%
 # Feature engineering
@@ -49,9 +52,8 @@ df = df.with_columns((pl.col(nr_sibl_spou_col) + pl.col(nr_parent_child_col)).al
 # Divide cabin str into features
 import re
 features_from_cabin = ['Deck', 'Room']
-nr_cabins_col = 'nr_cabins'
+nr_cabins_col = 'Nr_cabins'
 travel_features += features_from_cabin + [nr_cabins_col]
-
 
 def split_letters_and_numbers(s: str):
     s_last = s.split(' ')[-1]
@@ -134,10 +136,16 @@ plot_feature_2d_histograms(df, columns=variables_2d_histograms, plot_dir=results
 
 #%%
 # Correlations
-from plot import plot_pairplot
+from plot import plot_pairplot, plot_correlations, correlations_autoreport
 
-df_no_nulls = df.drop_nulls()
+df_no_idx = df.select(pl.col(c for c in df.columns if c != id_col))
+df_no_nulls = df_no_idx.drop_nulls()
 plot_pairplot(df_no_nulls, name='general', plot_dir=results_dir+'/corrs', sub='strict')
+# TODO: remove non numeric!!
+df_numeric_no_nulls = df_no_nulls.select(pl.col(numeric_columns(df_no_nulls)))
+df_corrs = df_numeric_no_nulls.to_pandas().corr().round(2)
+plot_correlations(df_corrs, name='general', plot_dir=results_dir+'/corrs', sub='strict')
+correlations_autoreport(df_corrs, name='general', plot_dir=results_dir+'/corrs', sub='strict')
 
 #%%
 # PCA

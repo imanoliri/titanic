@@ -1,10 +1,17 @@
-from typing import Iterable, List, Union
+from typing import Iterable, List, Tuple, Union
 from analysis import is_outlier
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pathlib
 import polars as pl
 from sklearn.decomposition import PCA
+import os
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from matplotlib import pyplot as plt
 
 
 def plot_feature_histograms(data: pl.DataFrame, plot_dir:str='.', columns: Iterable[str]=None, hue_variables: Iterable[str]=None, plot_no_outliers: bool = False):
@@ -99,6 +106,95 @@ def plot_pairplot(data, name: str, plot_dir:str='.', sub: str = ''):
     pathlib.Path(fpath).parent.mkdir(parents=True,exist_ok=True)
     plt.savefig(fpath)
     plt.close()
+
+
+def plot_correlations(corr: pd.DataFrame, name: str, plot_dir:str='.', sub: str = '', corner: bool = True):
+    # https://seaborn.pydata.org/examples/many_pairwise_correlations.html
+
+    title_str = f'correlations_{name}_{sub}'
+    path = f'{plot_dir}/{title_str}'
+    
+    corr.to_csv(f'{path}.csv')
+    corr_plot = corr
+    if corner:
+        corr_plot = corr.where(~np.triu(np.ones(corr.shape)).astype(bool))
+
+    f, ax = plt.subplots(figsize=(11, 9))
+    cmap = sns.diverging_palette(230, 20, as_cmap=True)
+    sns.heatmap(corr_plot,
+                cmap=cmap,
+                vmin=-1,
+                vmax=1,
+                center=0,
+                square=True,
+                annot=True,
+                linewidths=.5,
+                cbar_kws={"shrink": .5})
+    ax = plt.gca()
+    ax.set_title(title_str)
+    
+    fpath = f'{plot_dir}/{title_str}.jpg'
+    pathlib.Path(fpath).parent.mkdir(parents=True,exist_ok=True)
+    plt.savefig(fpath)
+    plt.close()
+    plt.close('all')
+
+
+def correlations_autoreport(corr: pd.DataFrame, name: str, plot_dir:str='.', sub: str = '',
+                    high_corr_threshold: float = 0.5,
+                    low_corr_threshold: float = 0.1,
+                    corrs_for_each_param: int = 3):    
+    autoreport_lines = []
+    df_corr_all = corr.stack().to_frame()
+    df_corr_all.index.names = ['var1', 'var2']
+    df_corr_all.columns = ['correlation']
+    df_corr_all['abs_correlation'] = df_corr_all.abs()
+    mask_coincident_variables = np.array(
+        [v1 in v2 or v2 in v1 for v1, v2 in df_corr_all.index.values])
+    df_corr_all = df_corr_all.loc[~mask_coincident_variables]
+
+    # Only the lower triangular
+    corr_tri = corr.where(~np.triu(np.ones(corr.shape)).astype(bool))
+    df_corr = corr_tri.stack().to_frame()
+    df_corr.index.names = ['var1', 'var2']
+    df_corr.columns = ['correlation']
+    mask_coincident_variables = np.array(
+        [v1 in v2 or v2 in v1 for v1, v2 in df_corr.index.values])
+    df_corr = df_corr.loc[~mask_coincident_variables]
+    df_corr['abs_correlation'] = df_corr.abs()
+    df_corr = df_corr.sort_values('abs_correlation', ascending=False)
+    df_corr['high_corr'] = df_corr['abs_correlation'] > high_corr_threshold
+    df_corr['low_corr'] = df_corr['abs_correlation'] < low_corr_threshold
+
+    autoreport_lines.append('High correlations')
+    autoreport_lines += [
+        f'{v1} - {v2}: {round(row.correlation,2)}'
+        for (v1, v2), row in df_corr.loc[df_corr['high_corr']].iterrows()
+    ]
+
+    autoreport_lines.append('\nLow correlations')
+    autoreport_lines += [
+        f'{v1} - {v2}: {round(row.correlation,2)}'
+        for (v1, v2), row in df_corr.loc[df_corr['low_corr']].iterrows()
+    ]
+
+    autoreport_lines.append('\nHighest & lowest correlations per variable')
+    df_corr_high_low = df_corr_all.reset_index().groupby('var1').apply(
+        lambda x: x.sort_values('abs_correlation', ascending=False
+                                ).iloc[:, :3].values)
+    autoreport_lines += [
+        f'{v1} - {v2}: {round(corr,2)}' for row in df_corr_high_low.values
+        for v1, v2, corr in np.array(
+            [*row[:corrs_for_each_param], *row[-corrs_for_each_param:]])
+    ]
+
+
+    title_str = f'correlations_{name}_{sub}'
+    path = f'{plot_dir}/{title_str}'
+    fpath = f'{path}_autoreport.txt'
+    pathlib.Path(fpath).parent.mkdir(parents=True,exist_ok=True)
+    with open(fpath, 'w') as f:
+        f.write('\n'.join(autoreport_lines))
 
 
 def plot_pca(pca: PCA, columns: Iterable[str], name: str, plot_dir: str='.', sub: str = ''):
