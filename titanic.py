@@ -82,11 +82,12 @@ for col in df.columns:
         continue
     if feature_null_ratio >= feature_missing_min_nulls:
         features_with_missing.append(col)
-
+empty_features
+#%%
+features_with_missing
 #%% Remove empty features
 df = df.select(pl.col(c for c in df.columns if c not in empty_features))
-
-#%% Impute missing features
+#%% Impute missing features (with median)
 for col in features_with_missing:
    df_col = df.select(pl.col(col))
    df_col = df_col.fill_null(df_col.median())
