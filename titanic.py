@@ -25,16 +25,49 @@ df
 features_to_rename = {'Pclass': 'Class', 'SibSp': 'Nr_siblings', 'Parch': 'Nr_parents', 'Embarked': 'Port_Embarked'}
 df = df.rename(features_to_rename)
 #%%
-# Cast to correct class
-features_idx = ['PassengerId']
+# Identify features
+id_col = 'PassengerId'
+cabin_col = 'Cabin'
+idx_features = [id_col, 'Name', 'Ticket', cabin_col]
+social_features = [ 'Class', 'Sex', 'Age', 'Nr_siblings', 'Nr_parents']
+travel_features = ['Fare', 'Port_Embarked']
+result_features = ['Survived']
+
 features_categorical = ['Class', 'Port_Embarked', 'Survived']
-features_numeric = [col for col,dtype in zip(df.columns, df.dtypes) if dtype in pl.NUMERIC_DTYPES and col not in features_idx]
+features_numeric = [col for col,dtype in zip(df.columns, df.dtypes) if dtype in pl.NUMERIC_DTYPES and col not in idx_features]
 features_numeric_no_categorical = [col for col in features_numeric if col not in features_categorical]
-#features_to_cast = {pl.Categorical: ['Sex', 'Embarked'], pl.Boolean: ['Parch', 'Survived']}
+#%%
+# Feature engineering
+import re
+features_from_cabin = ['Deck', 'Room']
+travel_features += features_from_cabin
+
+def split_letters_and_numbers(s: str):
+    s_last = s.split(' ')[-1]
+    return re.findall(r'[a-zA-Z]+', s_last)[0], re.findall(r'[0-9]+', s_last)[0]
+
+
+def split_cabin_into_letters_and_numbers_struct(cabin: str) -> dict:
+    if cabin is None:
+        return dict(zip(features_from_cabin, [None]*len(features_from_cabin)))
+    return dict(zip(features_from_cabin, split_letters_and_numbers(cabin)))
+
+# Example https://stackoverflow.com/questions/73699500/python-polars-split-string-column-into-many-columns-by-delimiter
+df = df.with_columns(
+    pl.col(cabin_col).apply(
+        lambda x: split_cabin_into_letters_and_numbers_struct(x))
+       .alias("split_cabin")
+        ).unnest("split_cabin")
+
+#%%
+# Cast to correct class
+features_to_cast = {pl.Categorical: features_categorical} #['Sex', 'Embarked'], pl.Boolean: ['Parch', 'Survived']}
 features_to_cast = {}
 for cast_type, cast_features in features_to_cast.items():
     for col in cast_features:
         df = df.with_columns(df.select(pl.col(col).cast(cast_type)).to_series().alias(col))
+#%%
+df
 #%%
 df.describe()
 #%% Feature selection
