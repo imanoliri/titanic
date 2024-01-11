@@ -52,6 +52,41 @@ def plot_hist(data: pl.DataFrame, col:str, hue_col:str=None, plot_dir:str='.', s
     plt.close()
 
 
+def plot_feature_2d_histograms(data: pl.DataFrame, columns: Iterable[Iterable[str]], plot_dir:str='.', plot_no_outliers: bool = True):
+    for cols in columns:
+        plt.close('all')
+        data_col = data.select(pl.col(cols))
+        if not all(dt.is_numeric() or dt == pl.Categorical for dt in data_col.dtypes):
+            continue
+        data_col = data_col.drop_nulls()
+        if data_col.is_empty():
+            continue
+
+        # Plot normal histogram
+        plot_2d_hist(data_col, cols=cols, plot_dir=plot_dir)
+
+        # Plot histogram no outliers
+        if plot_no_outliers and all(dt.is_numeric() for dt in data_col.dtypes):
+            data_vals = data_col.to_numpy()
+            not_outlier_mask = np.bitwise_and(~is_outlier(data_vals),~is_outlier(data_vals))
+            if not_outlier_mask.sum() > 1 and not_outlier_mask.sum() != len(data_col):
+                data_col = data_col.filter(not_outlier_mask)
+                plot_2d_hist(data_col, cols=cols, plot_dir=plot_dir, sub='no_outliers')
+
+
+def plot_2d_hist(data: pl.DataFrame, cols: Iterable[str], plot_dir:str='.', sub: str = ''):
+    if sub != '':
+        sub = f'_{sub.strip(' _')}'
+    cols_str = '_'.join(cols)
+
+    ax = sns.histplot(data, x=cols[0], y=cols[1], multiple='stack')
+    ax.set_title(cols_str)
+    fpath = f'{plot_dir}/hist_{cols_str}{sub}.jpg'
+    pathlib.Path(fpath).parent.mkdir(parents=True,exist_ok=True)
+    plt.savefig(fpath)
+    plt.close()
+
+
 def plot_pairplot(data, name: str, plot_dir:str='.', sub: str = ''):
     if sub != '':
         sub = f'_{sub.strip(' _')}'

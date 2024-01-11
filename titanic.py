@@ -120,8 +120,17 @@ for col in features_with_missing:
 #%%
 # Histograms
 from plot import plot_feature_histograms
-features_categorical = ['Pclass',  'SibSp', 'Parch', 'Embarked', 'Survived']
 plot_feature_histograms(df, results_dir+'/hists', hue_variables=features_categorical)
+
+#%%
+# 2D Histograms
+from plot import plot_feature_2d_histograms
+from itertools import combinations
+# social_2d_variables = [('Age', 'Sex'), ('Class', 'Sex'), ('Age', 'Class')]
+# travel_2d_variables = [('Fare', 'Port_Embarked')]
+# variables_2d_histograms = social_2d_variables + travel_2d_variables
+variables_2d_histograms = list(cols for cols in combinations(social_features+travel_features, 2) if not any(c in empty_features for c in cols))
+plot_feature_2d_histograms(df, columns=variables_2d_histograms, plot_dir=results_dir+'/hists_2d', plot_no_outliers=False)
 
 #%%
 # Correlations
