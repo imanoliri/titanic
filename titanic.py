@@ -54,7 +54,7 @@ def split_cabin_into_letters_and_numbers_struct(cabin: str) -> dict:
 
 # Example https://stackoverflow.com/questions/73699500/python-polars-split-string-column-into-many-columns-by-delimiter
 df = df.with_columns(
-    pl.col(cabin_col).apply(
+    pl.col(cabin_col).map_elements(
         lambda x: split_cabin_into_letters_and_numbers_struct(x))
        .alias("split_cabin")
         ).unnest("split_cabin")
