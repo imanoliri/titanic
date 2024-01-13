@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
+from matplotlib.animation import FuncAnimation
 
 
 def plot_feature_histograms(data: pl.DataFrame, plot_dir:str='.', columns: Iterable[str]=None, hue_variables: Iterable[str]=None, plot_no_outliers: bool = False):
@@ -262,3 +263,90 @@ def pca_autoreport(pca: PCA, columns: Iterable[str], top_comps:int = 5, top_fact
     ]
     return autoreport_lines
 
+
+def plot_3D(data: Union[np.ndarray, pd.DataFrame, pl.DataFrame],
+            plot_dir: str = '.',
+            sub: str = '',
+            variables: List[str] = None,
+            colour_data: np.ndarray = None,
+            title: str = None,
+            figsize: Tuple[float] = (8, 6),
+            elev: float = -150,
+            azim: float = 110,
+            as_animation: bool = True,
+            frames: int = 360,
+            interval: int = 200,
+            blit: bool = False):
+    if variables is None:
+        if isinstance(data, (pd.DataFrame, pl.DataFrame)):
+            variables = data.columns[:3]
+        else:
+            variables = ["1st", "2nd", "3rd"]
+    if not isinstance(variables, list):
+        variables = list(variables)
+
+    if title is None:
+        title = '__'.join(variables)
+    if sub != '':
+        sub = f'_{sub.strip(' _')}'
+    title_str = f'3D_{title}{sub}'
+    fpath = f'{plot_dir}/{title_str}'
+    pathlib.Path(fpath).parent.mkdir(parents=True,exist_ok=True)
+
+    data_to_plot = data
+    categorical_encodings = []
+    if isinstance(data, pd.DataFrame):
+        data_to_plot = data.loc[:, variables].T.values.tolist()
+        #TODO: support categorical data types in pandas!!
+    if isinstance(data, pl.DataFrame):
+        data_to_plot = data.select(pl.col(variables))
+        # Search and convert categoricals to int
+        for var in variables:
+            if data_to_plot.select(pl.col(var)).dtypes[0] != pl.Categorical:
+                continue
+            data_to_plot = data_to_plot.with_columns(pl.col(var).to_physical())
+            categorical_encodings.append( data.get_column(var).to_arrow().dictionary )
+        data_to_plot = data_to_plot.to_numpy().T.tolist()
+
+    # Create a figure and a 3D Axes
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(projection='3d')
+    ax.set_title(title)
+
+    def plot_scatter_3d():
+        ax.scatter(*data_to_plot, c=colour_data)
+        ax.view_init(elev=elev, azim=azim)
+        ax.set_title(title)
+        
+        ax.set_xlabel(variables[0])
+        if variables[0] in categorical_encodings:
+            ax.set_xticks(categorical_encodings[variables[0]])
+        ax.set_ylabel(variables[1])
+        if variables[1] in categorical_encodings:
+            ax.set_yticks(categorical_encodings[variables[1]])
+        ax.set_zlabel(variables[2])
+        if variables[2] in categorical_encodings:
+            ax.set_zticks(categorical_encodings[variables[2]])
+        ax.invert_zaxis()
+        return fig,
+
+    def animate(i):
+        ax.view_init(elev=elev, azim=azim + i)
+        return fig,
+
+    # Save either as animation or static
+    os.makedirs(os.path.dirname(plot_dir), exist_ok=True)
+    if as_animation:
+        anim = FuncAnimation(fig,
+                             animate,
+                             init_func=plot_scatter_3d,
+                             frames=frames,
+                             interval=interval,
+                             blit=blit)
+        # Save
+        anim.save(f'{fpath}.mp4', fps=30, extra_args=['-vcodec', 'libx264'])
+        return
+    else:
+        fig = plot_scatter_3d()
+        plt.savefig(f'{fpath}', transparent=False)
+    plt.close('all')

@@ -148,6 +148,13 @@ plot_correlations(df_corrs, name='general', plot_dir=results_dir+'/corrs', sub='
 correlations_autoreport(df_corrs, name='general', plot_dir=results_dir+'/corrs', sub='strict')
 
 #%%
+# 3D
+from plot import plot_3D
+nr_relatives_col
+variables_3d = [('Class', 'Age', 'Sex'), (nr_sibl_spou_col, nr_parent_child_col, nr_relatives_col)]
+for vars_3d in variables_3d:
+    plot_3D(df_no_nulls, variables=vars_3d, plot_dir=results_dir+'/3D')
+#%%
 # PCA
 import sklearn
 from plot import plot_pca
