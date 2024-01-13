@@ -60,7 +60,7 @@ def plot_hist(data: pl.DataFrame, col:str, hue_col:str=None, plot_dir:str='.', s
     plt.close()
 
 
-def plot_feature_2d_histograms(data: pl.DataFrame, columns: Iterable[Iterable[str]], plot_dir:str='.', plot_no_outliers: bool = True):
+def plot_feature_2d_distributions(data: pl.DataFrame, columns: Iterable[Iterable[str]], plot_dir:str='.', kind: str = 'hist', plot_no_outliers: bool = False):
     for cols in columns:
         plt.close('all')
         data_col = data.select(pl.col(cols))
@@ -70,26 +70,26 @@ def plot_feature_2d_histograms(data: pl.DataFrame, columns: Iterable[Iterable[st
         if data_col.is_empty():
             continue
 
-        # Plot normal histogram
-        plot_2d_hist(data_col, cols=cols, plot_dir=plot_dir)
+        # Plot normal distribution
+        plot_2d_dist(data_col, cols=cols, plot_dir=plot_dir, kind=kind)
 
-        # Plot histogram no outliers
+        # Plot distribution no outliers
         if plot_no_outliers and all(dt.is_numeric() for dt in data_col.dtypes):
             data_vals = data_col.to_numpy()
             not_outlier_mask = np.bitwise_and(~is_outlier(data_vals),~is_outlier(data_vals))
             if not_outlier_mask.sum() > 1 and not_outlier_mask.sum() != len(data_col):
                 data_col = data_col.filter(not_outlier_mask)
-                plot_2d_hist(data_col, cols=cols, plot_dir=plot_dir, sub='no_outliers')
+                plot_2d_dist(data_col, cols=cols, plot_dir=plot_dir, sub='no_outliers', kind=kind)
 
 
-def plot_2d_hist(data: pl.DataFrame, cols: Iterable[str], plot_dir:str='.', sub: str = ''):
+def plot_2d_dist(data: pl.DataFrame, cols: Iterable[str], plot_dir:str='.', sub: str = '', kind: str = 'hist', cbar: bool = True):
     if sub != '':
         sub = f'_{sub.strip(' _')}'
     cols_str = '_'.join(cols)
 
-    ax = sns.histplot(data, x=cols[0], y=cols[1], multiple='stack')
-    ax.set_title(cols_str)
-    fpath = f'{plot_dir}/hist_{cols_str}{sub}.jpg'
+    ax = sns.displot(data, x=cols[0], y=cols[1], kind=kind, cbar=cbar)
+    ax.set_titles(cols)
+    fpath = f'{plot_dir}/2d_{cols_str}{sub}.jpg'
     pathlib.Path(fpath).parent.mkdir(parents=True,exist_ok=True)
     plt.savefig(fpath)
     plt.close()
@@ -289,7 +289,7 @@ def plot_3D(data: Union[np.ndarray, pd.DataFrame, pl.DataFrame],
         title = '__'.join(variables)
     if sub != '':
         sub = f'_{sub.strip(' _')}'
-    title_str = f'3D_{title}{sub}'
+    title_str = f'3d_{title}{sub}'
     fpath = f'{plot_dir}/{title_str}'
     pathlib.Path(fpath).parent.mkdir(parents=True,exist_ok=True)
 

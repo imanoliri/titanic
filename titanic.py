@@ -126,23 +126,19 @@ plot_feature_histograms(df, results_dir+'/hists', hue_variables=features_categor
 
 #%%
 # 2D Histograms
-from plot import plot_feature_2d_histograms
+from plot import plot_feature_2d_distributions
 from itertools import combinations
 # social_2d_variables = [('Age', 'Sex'), ('Class', 'Sex'), ('Age', 'Class')]
 # travel_2d_variables = [('Fare', 'Port_Embarked')]
-# variables_2d_histograms = social_2d_variables + travel_2d_variables
-variables_2d_histograms = list(cols for cols in combinations(social_features+travel_features, 2) if not any(c in empty_features for c in cols))
-plot_feature_2d_histograms(df, columns=variables_2d_histograms, plot_dir=results_dir+'/hists_2d', plot_no_outliers=False)
+# variables_2d_distributions = social_2d_variables + travel_2d_variables
+variables_2d_distributions = list(cols for cols in combinations(social_features+travel_features, 2) if not any(c in empty_features for c in cols))
+plot_feature_2d_distributions(df, columns=variables_2d_distributions, plot_dir=results_dir+'/2D', kind='kde')
 
 #%%
 # Correlations
 from plot import plot_pairplot, plot_correlations, correlations_autoreport
 
-df_no_idx = df.select(pl.col(c for c in df.columns if c != id_col))
-df_no_nulls = df_no_idx.drop_nulls()
 plot_pairplot(df_no_nulls, name='general', plot_dir=results_dir+'/corrs', sub='strict')
-# TODO: remove non numeric!!
-df_numeric_no_nulls = df_no_nulls.select(pl.col(numeric_columns(df_no_nulls)))
 df_corrs = df_numeric_no_nulls.to_pandas().corr().round(2)
 plot_correlations(df_corrs, name='general', plot_dir=results_dir+'/corrs', sub='strict')
 correlations_autoreport(df_corrs, name='general', plot_dir=results_dir+'/corrs', sub='strict')
